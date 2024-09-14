@@ -77,20 +77,38 @@ st.write(
     `{UNDO_WIDGET_CLICKED}` to True.
 
 ## Expectation vs reality
-* You might expect the {UNDO_WIDGET_BUTTON_NAME} button to decrement `{NUM_WIDGETS}` if it is clicked, 
+
+### 1 - {UNDO_WIDGET_BUTTON_NAME} doesn't decrement `{NUM_WIDGETS}`
+* One might expect the {UNDO_WIDGET_BUTTON_NAME} button to decrement `{NUM_WIDGETS}` if it is clicked, 
   but actually, it doesn't. 
+
+### 2 - According to logging, {UNDO_WIDGET_BUTTON_NAME} wasn't clicked, even though it was
 * Look in the transcript for the runs in which you click {UNDO_WIDGET_BUTTON_NAME} to see a 
   `not displaying UNDO ADD WIDGET; ADD WIDGET wasn't clicked` message.
-* You might expect the {NUM_WIDGETS} metric at the top to match the same metric at the bottom, but 
+
+### 2 - The `{NUM_WIDGETS}` metric is less before then button than after
+* One might expect the {NUM_WIDGETS} metric at the top to match the same metric at the bottom, but 
   the metric at the top is 1 less than the one at the bottom.
 
-## Why it happens
-* this is logically equivalent to the situation outlined in [Button behavior and examples - Streamlit Docs](https://docs.streamlit.io/develop/concepts/design/buttons#when-to-use-if-stbutton)
 
-> Bad to nest inside buttons:
+## Why these things happen (hypothesis)
+
+### 1 - conditioning the render of {UNDO_WIDGET_BUTTON_NAME} on value set in {ADD_WIDGET_BUTTON_NAME} creates a "Bad" situation
+
+This example could be related to (and possibly also logically identical to?) the first "Bad" situation outlined in 
+[Button behavior and examples - Streamlit Docs](https://docs.streamlit.io/develop/concepts/design/buttons#when-to-use-if-stbutton):
+
+> **Bad** to nest inside buttons:
 > * **Displayed items that should persist as the user continues.**
 > * Other widgets which cause the script to rerun when used. 
 > * Processes that neither modify session state nor write to a file/database.\* 
+
+### 2 - `{NUM_WIDGETS}` before = 1 - `{NUM_WIDGETS}` after because of top to bottom flow 
+
+Farther down that page, under [Button behavior - A slight problem](https://docs.streamlit.io/develop/concepts/design/buttons#a-slight-problem),
+the streamlit docs mention that the value of a button only impacts items below it in the script,
+even if session state is updated. 
+
 
 This example shows how if one stores the boolean value of a button click in session state, 
 and then try to use that value to later conditionally display another button, 
@@ -139,7 +157,7 @@ else:
 
 print_value_of_add_widget_clicked("After if-else")
 
-with st.expander("Transcript", expanded=True):
+with st.expander("Transcript"):
     st.json(st.session_state.get(TRANSCRIPT), expanded=1)
 
 show_metrics()

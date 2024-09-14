@@ -1,0 +1,145 @@
+import streamlit as st
+
+
+NUM_RUNS = "num_runs"
+NUM_WIDGETS = "num_widgets"
+
+ADD_WIDGET_BUTTON_NAME = "ADD WIDGET"
+ADD_WIDGET_CLICKED = "add_widget_clicked"
+
+UNDO_WIDGET_BUTTON_NAME = "UNDO ADD WIDGET"
+UNDO_WIDGET_CLICKED = "undo_widget_clicked"
+
+KEY_METRICS = [NUM_RUNS, NUM_WIDGETS, ADD_WIDGET_CLICKED, UNDO_WIDGET_CLICKED]
+
+TRANSCRIPT = "transcript"
+
+
+if NUM_RUNS not in st.session_state:
+    st.session_state[NUM_RUNS] = 1
+else:
+    st.session_state[NUM_RUNS] += 1
+
+if NUM_WIDGETS not in st.session_state:
+    st.session_state[NUM_WIDGETS] = 0
+
+if TRANSCRIPT not in st.session_state:
+    st.session_state[TRANSCRIPT] = {}
+
+
+def log(message: dict):
+    num_runs = st.session_state[NUM_RUNS]
+    num_runs_key = f"num_runs={num_runs}"
+    transcript = st.session_state.get(TRANSCRIPT)
+    if num_runs_key not in transcript:
+        transcript[num_runs_key] = {}
+    location = message.pop("location", "no location provided")
+    if location in transcript[num_runs_key]:
+        raise ValueError(f"Location {location} already exists in transcript")
+    transcript[num_runs_key][location] = message
+    st.session_state[TRANSCRIPT] = transcript
+
+
+def print_value_of_add_widget_clicked(
+    location_specifier: str, metric_names_list: list[str] | None = None
+):
+    if metric_names_list is None:
+        metric_names_list = KEY_METRICS
+    debug_message = {"location": location_specifier}
+    for metric_name in metric_names_list:
+        debug_message[metric_name] = st.session_state.get(metric_name)
+    log(debug_message)
+
+
+def show_metrics(metric_names_list: list[str] | None = None):
+    if metric_names_list is None:
+        metric_names_list = KEY_METRICS
+    columns = st.columns(len(metric_names_list))
+    for i, metric_name in enumerate(metric_names_list):
+        with columns[i]:
+            st.metric(metric_name, st.session_state.get(metric_name))
+
+
+st.write(
+    f"""
+# Conditionally displaying a button based on another button's state is not recommended in Streamlit
+
+## The set-up
+* Clicking the {ADD_WIDGET_BUTTON_NAME} button should add a widget
+* If the {ADD_WIDGET_BUTTON_NAME} button is clicked, we should show an {UNDO_WIDGET_BUTTON_NAME} button
+* If {UNDO_WIDGET_BUTTON_NAME} button is clicked, it should remove a widget
+
+## The details
+* Upon clicking {ADD_WIDGET_BUTTON_NAME}, we set the `{ADD_WIDGET_CLICKED}` session state to True
+  and increment the number of widgets in `{NUM_WIDGETS}`.
+* If `{ADD_WIDGET_CLICKED}=True` and `{NUM_WIDGETS} > 0`, we show the {UNDO_WIDGET_BUTTON_NAME} button.
+* If {UNDO_WIDGET_BUTTON_NAME} is clicked, we decrement the number of widgets in `{NUM_WIDGETS}` and set 
+    `{UNDO_WIDGET_CLICKED}` to True.
+
+## Expectation vs reality
+* You might expect the {UNDO_WIDGET_BUTTON_NAME} button to decrement `{NUM_WIDGETS}` if it is clicked, 
+  but actually, it doesn't. 
+* Look in the transcript for the runs in which you click {UNDO_WIDGET_BUTTON_NAME} to see a 
+  `not displaying UNDO ADD WIDGET; ADD WIDGET wasn't clicked` message.
+* You might expect the {NUM_WIDGETS} metric at the top to match the same metric at the bottom, but 
+  the metric at the top is 1 less than the one at the bottom.
+
+## Why it happens
+* this is logically equivalent to the situation outlined in [Button behavior and examples - Streamlit Docs](https://docs.streamlit.io/develop/concepts/design/buttons#when-to-use-if-stbutton)
+
+> Bad to nest inside buttons:
+> * **Displayed items that should persist as the user continues.**
+> * Other widgets which cause the script to rerun when used. 
+> * Processes that neither modify session state nor write to a file/database.\* 
+
+This example shows how if one stores the boolean value of a button click in session state, 
+and then try to use that value to later conditionally display another button, 
+the results might not be what you expect.
+"""
+)
+
+
+show_metrics()
+
+print_value_of_add_widget_clicked("Before if-else, before initialization")
+
+for button_state_key in [ADD_WIDGET_CLICKED, UNDO_WIDGET_CLICKED]:
+    if button_state_key not in st.session_state:
+        st.session_state[button_state_key] = False
+
+print_value_of_add_widget_clicked("Before if-else, after initialization")
+
+if st.button(ADD_WIDGET_BUTTON_NAME):
+    st.session_state[ADD_WIDGET_CLICKED] = True
+    st.session_state[NUM_WIDGETS] += 1
+    print_value_of_add_widget_clicked(f"{ADD_WIDGET_BUTTON_NAME} just clicked")
+    st.info(f"Number of widgets: {st.session_state[NUM_WIDGETS]}")
+else:
+    st.session_state[ADD_WIDGET_CLICKED] = False
+    print_value_of_add_widget_clicked(f"{ADD_WIDGET_BUTTON_NAME} wasn't clicked")
+
+if num_widgets := st.session_state.get(NUM_WIDGETS):
+    if add_widget_clicked := st.session_state.get(ADD_WIDGET_CLICKED):
+        if st.button(UNDO_WIDGET_BUTTON_NAME):
+            st.session_state[NUM_WIDGETS] = st.session_state[NUM_WIDGETS] - 1
+            st.session_state[UNDO_WIDGET_CLICKED] = True
+            print_value_of_add_widget_clicked(f"{UNDO_WIDGET_BUTTON_NAME} clicked")
+            st.warning(f"Number of widgets: {st.session_state[NUM_WIDGETS]}")
+        else:
+            st.session_state[UNDO_WIDGET_CLICKED] = False
+            print_value_of_add_widget_clicked(
+                f"{UNDO_WIDGET_BUTTON_NAME} wasn't clicked"
+            )
+    else:
+        print_value_of_add_widget_clicked(
+            f"not displaying {UNDO_WIDGET_BUTTON_NAME}; {ADD_WIDGET_BUTTON_NAME} wasn't clicked"
+        )
+else:
+    print_value_of_add_widget_clicked("no widgets found... no undo button")
+
+print_value_of_add_widget_clicked("After if-else")
+
+with st.expander("Transcript", expanded=True):
+    st.json(st.session_state.get(TRANSCRIPT), expanded=1)
+
+show_metrics()

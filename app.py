@@ -85,6 +85,7 @@ st.write(
 ### 2 - According to logging, {UNDO_WIDGET_BUTTON_NAME} wasn't clicked, even though it was
 * Look in the transcript for the runs in which you click {UNDO_WIDGET_BUTTON_NAME} to see a 
   `not displaying UNDO ADD WIDGET; ADD WIDGET wasn't clicked` message.
+* Also, see the `undo_widget_clicked` metric, which never becomes True.
 
 ### 2 - The `{NUM_WIDGETS}` metric is less before then button than after
 * One might expect the {NUM_WIDGETS} metric at the top to match the same metric at the bottom, but 

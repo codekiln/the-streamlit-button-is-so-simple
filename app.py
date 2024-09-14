@@ -2,6 +2,8 @@ import streamlit as st
 
 TITLE = "The streamlit button is so simple"
 
+st.set_page_config(page_title=TITLE, initial_sidebar_state="auto", menu_items=None)
+
 NUM_RUNS = "num_runs"
 NUM_WIDGETS = "num_widgets"
 
@@ -61,13 +63,8 @@ def show_metrics(metric_names_list: list[str] | None = None):
             st.metric(metric_name, st.session_state.get(metric_name))
 
 
-st.title(TITLE)
-
-
 st.write(
     f"""
-# {TITLE}
-
 *Conditionally displaying a button based on another button's state is not recommended in Streamlit*
 
 ## The set-up
